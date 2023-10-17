@@ -30,7 +30,7 @@ const database = {
 
 // root get for testing
 app.get('/', (req, res) => {
-	res.send('this is working!');
+	res.send(database.users);
 });
 
 // post when someone tries to sign in, either success/fail
@@ -43,6 +43,20 @@ app.post('/signin', (req, res) => {
 	} else {
 		res.status(400).json("nah, didn't make it");
 	}
+});
+
+// post when someone registers
+app.post('/register', (req, res) => {
+	const { email, name, password } = req.body;
+	database.users.push({
+		id: '125',
+		name: name,
+		email: email,
+		password: password,
+		entries: 0,
+		joined: new Date(),
+	});
+	res.json(database.users[database.users.length - 1]);
 });
 
 // listen to server on port 3000

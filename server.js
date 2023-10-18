@@ -59,6 +59,21 @@ app.post('/register', (req, res) => {
 	res.json(database.users[database.users.length - 1]);
 });
 
+// get user for profile
+app.get('/profile/:id', (req, res) => {
+	const { id } = req.params;
+	let found = false;
+	database.users.forEach((user) => {
+		if (user.id === id) {
+			found = true;
+			return res.json(user);
+		}
+	});
+	if (!found) {
+		res.status(404).json("couldn't find the user");
+	}
+});
+
 // listen to server on port 3000
 app.listen(3000, () => {
 	console.log('app is running on port 3000!');

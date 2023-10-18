@@ -1,10 +1,14 @@
 import express from 'express';
+import cors from 'cors';
 
 // initialize our express server
 const app = express();
 
 // parse json middleware
 app.use(express.json());
+
+// cors middleware
+app.use(cors());
 
 // demo database
 const database = {

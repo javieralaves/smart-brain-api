@@ -1,5 +1,18 @@
 import express from 'express';
 import cors from 'cors';
+import knex from 'knex';
+
+// connect to local pg db through knex
+const db = knex({
+	client: 'pg',
+	connection: {
+		host: '127.0.0.1',
+		port: 5432,
+		user: 'javi',
+		password: '',
+		database: 'smart-brain',
+	},
+});
 
 // initialize our express server
 const app = express();
@@ -43,7 +56,7 @@ app.post('/signin', (req, res) => {
 		req.body.email === database.users[0].email &&
 		req.body.password === database.users[0].password
 	) {
-		res.json('signed in!');
+		res.json(database.users[0]);
 	} else {
 		res.status(400).json("nah, didn't make it");
 	}
@@ -52,15 +65,17 @@ app.post('/signin', (req, res) => {
 // post when someone registers
 app.post('/register', (req, res) => {
 	const { email, name, password } = req.body;
-	database.users.push({
-		id: '125',
-		name: name,
-		email: email,
-		password: password,
-		entries: 0,
-		joined: new Date(),
-	});
-	res.json(database.users[database.users.length - 1]);
+	db('users')
+		.returning('*')
+		.insert({
+			email: email,
+			name: name,
+			joined: new Date(),
+		})
+		.then((user) => {
+			res.json(user[0]);
+		})
+		.catch((err) => res.status(400).json('unable to register'));
 });
 
 // get user for profile

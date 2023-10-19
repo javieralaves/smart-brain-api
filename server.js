@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import knex from 'knex';
+import bcrypt from 'bcrypt-nodejs';
 
 // connect to local pg db through knex
 const db = knex({
@@ -52,30 +53,56 @@ app.get('/', (req, res) => {
 
 // post when someone tries to sign in, either success/fail
 app.post('/signin', (req, res) => {
-	if (
-		req.body.email === database.users[0].email &&
-		req.body.password === database.users[0].password
-	) {
-		res.json(database.users[0]);
-	} else {
-		res.status(400).json("nah, didn't make it");
-	}
+	db.select('email', 'hash')
+		.from('login')
+		.where('email', '=', req.body.email)
+		.then((data) => {
+			const isValid = bcrypt.compareSync(req.body.password, data[0].hash);
+			if (isValid) {
+				return db
+					.select('*')
+					.from('users')
+					.where('email', '=', req.body.email)
+					.then((user) => {
+						res.json(user[0]);
+					})
+					.catch((err) => res.status(400).json('unable to get user'));
+			} else {
+				res.status(400).json('wrong credentials');
+			}
+		})
+		.catch((err) => res.status(400).json('wrong credentials'));
 });
 
 // post when someone registers
 app.post('/register', (req, res) => {
 	const { email, name, password } = req.body;
-	db('users')
-		.returning('*')
-		.insert({
-			email: email,
-			name: name,
-			joined: new Date(),
-		})
-		.then((user) => {
-			res.json(user[0]);
-		})
-		.catch((err) => res.status(400).json('unable to register'));
+	const hash = bcrypt.hashSync(password);
+	db.transaction((trx) => {
+		trx
+			// first insert hash and email into login
+			.insert({
+				hash: hash,
+				email: email,
+			})
+			.into('login')
+			// return email to use loginemail as data for inserting data into user
+			.returning('email')
+			.then((loginEmail) => {
+				return trx('users')
+					.returning('*')
+					.insert({
+						email: loginEmail[0].email,
+						name: name,
+						joined: new Date(),
+					})
+					.then((user) => {
+						res.json(user[0]);
+					});
+			})
+			.then(trx.commit)
+			.catch(trx.rollback);
+	});
 });
 
 // get user for profile
